@@ -34,6 +34,10 @@ io.on("connection", (socket) => {
       }
       console.log({ queue, data });
     });
+    socket.on("chat", (socketId, message) => {
+      console.log(socketId, message);
+      socket.to(socketId).emit("chat", message);
+    });
     socket.on("update", (socketId, data) => {
       console.log(socketId, data);
       socket.to(socketId).emit("update", data);

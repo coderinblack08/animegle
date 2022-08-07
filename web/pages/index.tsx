@@ -22,6 +22,8 @@ const Home: NextPage = () => {
     (state) => [state.calling, state.pending, state.iAmTalking],
     shallow
   );
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<string[]>([]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -38,6 +40,10 @@ const Home: NextPage = () => {
           port: 9000,
         });
         peer.current.on("open", () => {
+          socket.on("chat", (message) => {
+            console.log(message);
+            setMessages((messages) => [...messages, message]);
+          });
           listenOnDevices(peer.current!);
         });
       });
@@ -65,8 +71,8 @@ const Home: NextPage = () => {
           <h1 className="text-3xl font-bold mb-6 decoration-wavy underline-offset-8 underline">
             Anime-gle
           </h1>
-          <div className="max-w-5xl mx-auto w-full">
-            <div className="grid gap-4 grid-cols-2">
+          <div className="max-w-8xl mx-auto w-full">
+            <div className="grid gap-4 grid-cols-2 xl:grid-cols-3">
               <div className="font-semibold rounded-xl border border-red-200 shadow-md shadow-red-200 bg-red-50/50 h-[32rem]">
                 <div className="border-b p-4 border-red-200">
                   Me: {username}
@@ -81,9 +87,34 @@ const Home: NextPage = () => {
                 </div>
                 <img
                   src={`/sprite_${
-                    calling?.sprite * 2 - (calling.isTalking ? 0 : 1)
+                    calling?.sprite * 2 - (calling?.isTalking ? 0 : 1)
                   }.png`}
                 />
+              </div>
+              <div className="flex flex-col font-semibold rounded-xl border border-red-200 shadow-md shadow-red-200 bg-red-50/50 h-[32rem]">
+                <div className="border-b p-4 border-red-200">Chat:</div>
+                <div className="flex flex-col h-full p-4">
+                  <div className="h-full w-full flex-grow space-y-2">
+                    {messages.map((message, index) => (
+                      <div key={index}>
+                        <p className="flex-grow">{message}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <input
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        socket.emit("chat", calling.socketId, message);
+                        setMessages((messages) => [...messages, message]);
+                        setMessage("");
+                      }
+                    }}
+                    type="text"
+                    placeholder="Your username..."
+                  />
+                </div>
               </div>
               <div className="mt-4 space-x-2">
                 <button onClick={() => setMute((prev) => !prev)}>
@@ -104,6 +135,7 @@ const Home: NextPage = () => {
                 >
                   <option value={1}>Blue haired girl</option>
                   <option value={2}>Brown haired girl</option>
+                  <option value={3}>Cat girl</option>
                   {/* <option value={2}>Cat girl</option> */}
                 </select>
               </div>
