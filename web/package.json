@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "hark": "^1.2.3",
     "next": "12.2.4",
     "peerjs": "^1.4.6",
     "react": "18.2.0",
@@ -18,6 +19,7 @@
     "zustand": "^4.0.0"
   },
   "devDependencies": {
+    "@types/hark": "^1.2.2",
     "@types/node": "18.6.4",
     "@types/react": "18.0.15",
     "@types/react-dom": "18.0.6",

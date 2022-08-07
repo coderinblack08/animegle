@@ -18,8 +18,8 @@ const Home: NextPage = () => {
   const [username, setUsername] = useState("");
   const [sprite, setSprite] = useState(1);
   const [mute, setMute] = useState(false);
-  const [calling, pending] = useStore(
-    (state) => [state.calling, state.pending],
+  const [calling, pending, iAmSpeaking] = useStore(
+    (state) => [state.calling, state.pending, state.iAmTalking],
     shallow
   );
 
@@ -54,13 +54,14 @@ const Home: NextPage = () => {
     if (calling) {
       socket.emit("update", calling.socketId, { sprite });
     }
-  }, [calling, sprite]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sprite]);
 
   return (
     <>
       {calling ? (
         <div className="flex items-center flex-col py-12 px-5">
-          <pre>{JSON.stringify(calling, null, 2)}</pre>
+          {/* <pre>{JSON.stringify(calling, null, 2)}</pre> */}
           <h1 className="text-3xl font-bold mb-6 decoration-wavy underline-offset-8 underline">
             Anime-gle
           </h1>
@@ -70,19 +71,32 @@ const Home: NextPage = () => {
                 <div className="border-b p-4 border-red-200">
                   Me: {username}
                 </div>
-                <img src={`/sprite_${sprite * 2 - 1}.png`} />
+                <img
+                  src={`/sprite_${sprite * 2 - (iAmSpeaking ? 0 : 1)}.png`}
+                />
               </div>
               <div className="font-semibold rounded-xl border border-red-200 shadow-md shadow-red-200 bg-red-50/50 h-[32rem]">
                 <div className="border-b p-4 border-red-200">
                   Your Match: {calling?.username}
                 </div>
-                <img src={`/sprite_${calling?.sprite * 2 - 1}.png`} />
+                <img
+                  src={`/sprite_${
+                    calling?.sprite * 2 - (calling.isTalking ? 0 : 1)
+                  }.png`}
+                />
               </div>
               <div className="mt-4 space-x-2">
                 <button onClick={() => setMute((prev) => !prev)}>
                   🎤 {mute ? "Unmute" : "Mute"} Mic
                 </button>
-                {leaveCall && <button onClick={leaveCall}>😭 Leave her</button>}
+                <button
+                  onClick={() => {
+                    socket.emit("leave", calling?.socketId);
+                    window.location.reload();
+                  }}
+                >
+                  😭 Leave her
+                </button>
                 <select
                   value={sprite}
                   onChange={(e) => setSprite(parseInt(e.target.value))}
@@ -92,7 +106,7 @@ const Home: NextPage = () => {
                   <option value={2}>Brown haired girl</option>
                   {/* <option value={2}>Cat girl</option> */}
                 </select>
-              </div>{" "}
+              </div>
             </div>
           </div>
         </div>
@@ -141,7 +155,7 @@ const Home: NextPage = () => {
           <p className="text-red-400 font-medium mt-2 text-center text-sm">
             An interactive platform where you can meet and talk to others with
             the luxury of looking like an adorable anime girl! Built by Kevin,
-            Sarah, Conner, and Ethan.
+            Sarah, Connor, and Ethan.
           </p>
         </div>
       )}

@@ -1,12 +1,36 @@
+import hark from "hark";
 import type { MediaConnection, Peer } from "peerjs";
 import create from "zustand";
 import { combine } from "zustand/middleware";
 import { socket } from "./socket";
 
+const detectWhenSpeaking = (stream: MediaStream, isMe: boolean) => {
+  const options = {};
+  const speechEvents = hark(stream, options);
+
+  const { setCalling, setIAmSpeaking } = useStore.getState();
+
+  speechEvents.on("speaking", function () {
+    if (isMe) {
+      setIAmSpeaking(true);
+    } else {
+      setCalling({ isTalking: true });
+    }
+  });
+
+  speechEvents.on("stopped_speaking", function () {
+    if (isMe) {
+      setIAmSpeaking(false);
+    } else {
+      setCalling({ isTalking: false });
+    }
+  });
+};
+
 const addAudioStream = (stream: MediaStream) => {
   const audio = new Audio();
   audio.srcObject = stream;
-  console.log(audio);
+  detectWhenSpeaking(stream, false);
   audio.addEventListener("loadedmetadata", () => audio.play());
   return audio;
 };
@@ -17,7 +41,8 @@ interface CallerData {
   socketId: string;
   username: string;
   sprite: number;
-  animeCharacter?: string;
+  // animeCharacter?: string;
+  isTalking?: boolean;
 }
 
 export let audioStream: MediaStream;
@@ -27,11 +52,14 @@ export const useStore = create(
   combine(
     {
       pending: false,
+      iAmTalking: false,
       calling: null as CallerData | null,
     },
     (set, _get) => ({
+      setIAmSpeaking: (iAmSpeaking: boolean) =>
+        set({ iAmTalking: iAmSpeaking }),
       setPending: (pending: boolean) => set((state) => ({ ...state, pending })),
-      setCalling: (calling: CallerData | null) =>
+      setCalling: (calling: Partial<CallerData> | null) =>
         set(
           (state) =>
             ({
@@ -45,15 +73,16 @@ export const useStore = create(
 
 const handleCall = (call: MediaConnection) => {
   let audioSource: HTMLAudioElement;
-  leaveCall = () => {
-    call.close();
-    audioSource.remove();
-  };
   call.on("stream", (stream) => (audioSource = addAudioStream(stream)));
-  socket.on("leave", leaveCall);
+  socket.on("leave", () => {
+    // reload window
+    window.location.reload();
+  });
   call.on("close", () => {
-    const { setCalling } = useStore.getState();
+    const { setCalling, calling } = useStore.getState();
+    socket.emit("leave", calling?.socketId);
     setCalling(null);
+    console.log("call closed");
     audioSource.remove();
   });
 };
@@ -63,6 +92,7 @@ export const listenOnDevices = async (peer: Peer) => {
     audio: true,
     video: false,
   });
+  detectWhenSpeaking(audioStream, true);
   const { setPending } = useStore.getState();
   peer.on("call", (call) => {
     setPending(false);
@@ -71,8 +101,8 @@ export const listenOnDevices = async (peer: Peer) => {
     handleCall(call);
   });
   socket.on("update", (data) => {
-    const { setCalling } = useStore.getState();
-    setCalling(data);
+    const { setCalling, calling } = useStore.getState();
+    if (calling) setCalling(data);
   });
   socket.on("match-made", (other, startCall) => {
     console.log(other);
